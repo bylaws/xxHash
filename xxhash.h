@@ -1422,8 +1422,8 @@ XXH3_128bits_reset_withSecretandSeed(XXH3_state_t* statePtr,
 #endif
 
 #ifndef XXH_FORCE_ALIGN_CHECK  /* can be defined externally */
-#  if defined(__i386)  || defined(__x86_64__) || defined(__aarch64__) \
-   || defined(_M_IX86) || defined(_M_X64)     || defined(_M_ARM64) /* visual */
+#  if defined(__i386)  || defined(__x86_64__) || defined(__aarch64__) || defined(__arm64ec__) \
+   || defined(_M_IX86) || defined(_M_X64)     || defined(_M_ARM64)    || defined(_M_ARM64EC) /* visual */
 #    define XXH_FORCE_ALIGN_CHECK 0
 #  else
 #    define XXH_FORCE_ALIGN_CHECK 1
@@ -2860,11 +2860,11 @@ enum XXH_VECTOR_TYPE /* fake enum */ {
 #    define XXH_VECTOR XXH_AVX512
 #  elif defined(__AVX2__)
 #    define XXH_VECTOR XXH_AVX2
-#  elif defined(__SSE2__) || defined(_M_AMD64) || defined(_M_X64) || (defined(_M_IX86_FP) && (_M_IX86_FP == 2))
+#  elif defined(__SSE2__) || ((defined(_M_AMD64) || defined(_M_X64)) && !defined(_M_ARM64EC)) || (defined(_M_IX86_FP) && (_M_IX86_FP == 2))
 #    define XXH_VECTOR XXH_SSE2
 #  elif ( \
         defined(__ARM_NEON__) || defined(__ARM_NEON) /* gcc */ \
-     || defined(_M_ARM64) || defined(_M_ARM_ARMV7VE) /* msvc */ \
+     || defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_ARM_ARMV7VE) /* msvc */ \
    ) && ( \
         defined(_WIN32) || defined(__LITTLE_ENDIAN__) /* little endian only */ \
     || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) \
@@ -3020,7 +3020,7 @@ enum XXH_VECTOR_TYPE /* fake enum */ {
  */
 # if !defined(XXH_NO_VZIP_HACK) /* define to disable */ \
    && defined(__GNUC__) \
-   && !defined(__aarch64__) && !defined(__arm64__) && !defined(_M_ARM64)
+   && !defined(__aarch64__) && !defined(__arm64__) && !defined(_M_ARM64) && !defined(_M_ARM64EC)
 #  define XXH_SPLIT_IN_PLACE(in, outLo, outHi)                                              \
     do {                                                                                    \
       /* Undocumented GCC/Clang operand modifier: %e0 = lower D half, %f0 = upper D half */ \
@@ -3148,7 +3148,7 @@ XXH_FORCE_INLINE xxh_u64x2 XXH_vec_mule(xxh_u32x4 a, xxh_u32x4 b)
 #if defined(XXH_NO_PREFETCH)
 #  define XXH_PREFETCH(ptr)  (void)(ptr)  /* disabled */
 #else
-#  if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))  /* _mm_prefetch() not defined outside of x86/x64 */
+#  if defined(_MSC_VER) && ((defined(_M_X64) && !defined(_M_ARM64EC)) || defined(_M_IX86))  /* _mm_prefetch() not defined outside of x86/x64 */
 #    include <mmintrin.h>   /* https://msdn.microsoft.com/fr-fr/library/84szxsww(v=vs.90).aspx */
 #    define XXH_PREFETCH(ptr)  _mm_prefetch((const char*)(ptr), _MM_HINT_T0)
 #  elif defined(__GNUC__) && ( (__GNUC__ >= 4) || ( (__GNUC__ == 3) && (__GNUC_MINOR__ >= 1) ) )
@@ -3270,7 +3270,7 @@ XXH_mult64to128(xxh_u64 lhs, xxh_u64 rhs)
      *
      * This compiles to single operand MUL on x64.
      */
-#elif defined(_M_X64) || defined(_M_IA64)
+#elif (defined(_M_X64) && !defined(_M_ARM64EC))|| defined(_M_IA64)
 
 #ifndef _MSC_VER
 #   pragma intrinsic(_umul128)
@@ -3287,7 +3287,7 @@ XXH_mult64to128(xxh_u64 lhs, xxh_u64 rhs)
      *
      * This compiles to the same MUL + UMULH as GCC/Clang's __uint128_t method.
      */
-#elif defined(_M_ARM64)
+#elif defined(_M_ARM64) || defined(_M_ARM64EC)
 
 #ifndef _MSC_VER
 #   pragma intrinsic(__umulh)
